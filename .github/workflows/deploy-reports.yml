@@ -14,11 +14,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-relatorio
+  group: deploy-reports
   cancel-in-progress: false
 
 env:
-  MODULE_DIR: function-relatorio
+  MODULE_DIR: function-reports
   AZURE_FUNCTIONAPP_NAME: weekly-report
   JAVA_VERSION: '21'
 

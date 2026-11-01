@@ -14,11 +14,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-alerta
+  group: deploy-alerts
   cancel-in-progress: false
 
 env:
-  MODULE_DIR: function-alerta
+  MODULE_DIR: function-alerts
   AZURE_FUNCTIONAPP_NAME: critical-alerts
   JAVA_VERSION: '21'
 

@@ -25,11 +25,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verifica se o modulo ja tem codigo
+        id: has_code
+        run: |
+          if [ -f "${{ matrix.module }}/pom.xml" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "Sem pom.xml em ${{ matrix.module }}, pulando"
+          fi
+
       - uses: actions/setup-java@v4
+        if: steps.has_code.outputs.ok == 'true'
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
 
       - name: Build + testes
+        if: steps.has_code.outputs.ok == 'true'
         run: mvn -B verify --file ${{ matrix.module }}/pom.xml

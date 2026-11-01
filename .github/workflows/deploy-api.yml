@@ -18,7 +18,7 @@ concurrency:
 
 env:
   MODULE_DIR: api
-  AZURE_WEBAPP_NAME: SEU-APP-SERVICE-AQUI   # AJUSTE: nome do App Service da API
+  AZURE_WEBAPP_NAME: course-feedback
   JAVA_VERSION: '21'
 
 jobs:
