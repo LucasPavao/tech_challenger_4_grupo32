@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>br.com.techchallenge</groupId>
+    <artifactId>function-reports</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>Tech Challenge Fase 4 - Relatorio Semanal</name>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Ajuste para o seu ambiente Azure (ou passe via -D na linha de comando) -->
+        <azure.functions.maven.plugin.version>1.36.0</azure.functions.maven.plugin.version>
+        <azure.functions.java.library.version>3.0.0</azure.functions.java.library.version>
+        <functionAppName>function-reports</functionAppName>
+        <functionResourceGroup>rg-techchallenge-fase4</functionResourceGroup>
+        <functionAppRegion>brazilsouth</functionAppRegion>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.microsoft.azure.functions</groupId>
+            <artifactId>azure-functions-java-library</artifactId>
+            <version>${azure.functions.java.library.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.6.1.jre11</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+            <version>12.25.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <plugin>
+                <groupId>com.microsoft.azure</groupId>
+                <artifactId>azure-functions-maven-plugin</artifactId>
+                <version>${azure.functions.maven.plugin.version}</version>
+                <configuration>
+                    <appName>${functionAppName}</appName>
+                    <resourceGroup>${functionResourceGroup}</resourceGroup>
+                    <region>${functionAppRegion}</region>
+                    <runtime>
+                        <os>linux</os>
+                        <javaVersion>21</javaVersion>
+                    </runtime>
+                    <appSettings>
+                        <property>
+                            <name>FUNCTIONS_EXTENSION_VERSION</name>
+                            <value>~4</value>
+                        </property>
+                    </appSettings>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>package-functions</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

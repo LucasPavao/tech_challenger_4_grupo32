@@ -1,0 +1,20 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+
+    "REPORT_CRON": "0 0 8 * * MON",
+    "REPORT_PERIOD_DAYS": "7",
+    "USE_DEMO_DATA": "true",
+
+    "SQL_CONNECTION_STRING": "jdbc:sqlserver://<servidor>.database.windows.net:1433;database=<banco>;user=<usuario>;password=<senha>;encrypt=true;trustServerCertificate=false;loginTimeout=30;",
+    "AVALIACAO_TABLE": "Avaliacoes",
+
+    "REPORT_BLOB_CONTAINER": "relatorios",
+
+    "SENDGRID_API_KEY": "",
+    "REPORT_EMAIL_FROM": "",
+    "REPORT_EMAIL_TO": "admin1@exemplo.com,admin2@exemplo.com"
+  }
+}

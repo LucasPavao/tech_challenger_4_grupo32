@@ -1,10 +1,10 @@
-package br.com.tech.challenge.feedbackapi;
+package br.com.techchallenge.api_evaluations;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class FeedbackapiApplicationTests {
+class ApiEvaluationsApplicationTests {
 
 	@Test
 	void contextLoads() {
