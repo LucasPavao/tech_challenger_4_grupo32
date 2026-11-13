@@ -72,5 +72,5 @@ jobs:
         id: deploy-to-function
         uses: Azure/functions-action@v1
         with:
-          app-name: 'function-reports-c9b5h0fbfrg7ekfz'
+          app-name: 'function-reports'
           package: 'package'
