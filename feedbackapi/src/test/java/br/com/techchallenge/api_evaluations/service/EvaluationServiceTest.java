@@ -22,6 +22,9 @@ class EvaluationServiceTest {
     @Mock
     private EvaluationRepository evaluationRepository;
 
+    @Mock
+    private FeedbackAlertClient feedbackAlertClient;
+
     @InjectMocks
     private EvaluationService evaluationService;
 
@@ -45,6 +48,8 @@ class EvaluationServiceTest {
 
         verify(evaluationRepository, times(1))
                 .save(any(Evaluation.class));
+        verify(feedbackAlertClient, times(1))
+                .sendForAlertAnalysis(any(Evaluation.class));
     }
 
     @Test
