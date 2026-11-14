@@ -13,9 +13,11 @@ import java.util.List;
 public class EvaluationService {
 
     private final EvaluationRepository evaluationRepository;
+    private final FeedbackAlertClient feedbackAlertClient;
 
-    public EvaluationService(EvaluationRepository evaluationRepository) {
+    public EvaluationService(EvaluationRepository evaluationRepository, FeedbackAlertClient feedbackAlertClient) {
         this.evaluationRepository = evaluationRepository;
+        this.feedbackAlertClient = feedbackAlertClient;
     }
 
     @Transactional
@@ -29,7 +31,12 @@ public class EvaluationService {
                 urgency
         );
 
-        return evaluationRepository.save(evaluation);
+        Evaluation saved = evaluationRepository.save(evaluation);
+
+        // Disparo assíncrono para a Azure Function Serverless (critical-alerts)
+        feedbackAlertClient.sendForAlertAnalysis(saved);
+
+        return saved;
     }
 
     @Transactional(readOnly = true)

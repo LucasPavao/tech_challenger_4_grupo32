@@ -1,1 +1,5 @@
 .idea
+teste.txt
+**/local.settings.json
+!**/local.settings.json.example
+*.log
