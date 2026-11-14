@@ -4,17 +4,12 @@ import br.com.techchallenge.function_alerts.application.dto.NotificationPayload;
 import br.com.techchallenge.function_alerts.application.port.NotificationSenderPort;
 import com.azure.communication.email.EmailClient;
 import com.azure.communication.email.EmailClientBuilder;
-import com.azure.communication.email.models.EmailAddress;
-import com.azure.communication.email.models.EmailContent;
 import com.azure.communication.email.models.EmailMessage;
-import com.azure.communication.email.models.EmailRecipients;
 import com.azure.communication.email.models.EmailSendResult;
 import com.azure.core.util.polling.PollResponse;
 import com.azure.core.util.polling.SyncPoller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 /**
  * Adaptador de infraestrutura 100% nativo Microsoft Azure Communication Services (ACS Email).
@@ -56,6 +51,11 @@ public class AzureEmailNotificationAdapter implements NotificationSenderPort {
         }
     }
 
+    private static String getEnvOrDefault(String key, String defaultValue) {
+        String val = System.getenv(key);
+        return (val != null && !val.isBlank()) ? val : defaultValue;
+    }
+
     private static String sanitizeEmail(String raw) {
         if (raw == null) return "";
         return raw.replace("http://", "").replace("https://", "").trim();
@@ -70,11 +70,6 @@ public class AzureEmailNotificationAdapter implements NotificationSenderPort {
             return "DoNotReply@" + cleaned;
         }
         return cleaned;
-    }
-
-    private static String getEnvOrDefault(String key, String defaultValue) {
-        String val = System.getenv(key);
-        return (val != null && !val.isBlank()) ? val : defaultValue;
     }
 
     @Override
@@ -95,15 +90,12 @@ public class AzureEmailNotificationAdapter implements NotificationSenderPort {
         try {
             String subject = "⚠️ ALERTA URGENTE: Feedback Crítico de Aluno";
 
-            EmailContent content = new EmailContent(subject)
-                    .setPlainText(payload.toPlainText())
-                    .setHtml(payload.toHtml());
-
-            EmailRecipients recipients = new EmailRecipients(
-                    List.of(new EmailAddress(recipientEmail).setDisplayName("Administrador de Feedbacks"))
-            );
-
-            EmailMessage emailMessage = new EmailMessage(senderEmail, recipients, content);
+            EmailMessage emailMessage = new EmailMessage()
+                    .setSenderAddress(senderEmail)
+                    .setToRecipients(recipientEmail)
+                    .setSubject(subject)
+                    .setBodyPlainText(payload.toPlainText())
+                    .setBodyHtml(payload.toHtml());
 
             LOGGER.info("[Azure Communication Services] Despachando e-mail via ACS SDK...");
             SyncPoller<EmailSendResult, EmailSendResult> poller = emailClient.beginSend(emailMessage);

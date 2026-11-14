@@ -1,7 +1,6 @@
 package br.com.techchallenge.api_evaluations.service;
 
 import br.com.techchallenge.api_evaluations.repository.Evaluation;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,11 +13,13 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 /**
  * Cliente HTTP responsável por disparar de forma assíncrona o evento de feedback
  * para a Azure Function Serverless de análise e alertas (critical-alerts).
+ *
+ * Utiliza exclusivamente a biblioteca padrão do Java 21 (java.net.http),
+ * garantindo zero dependências externas e compilação garantida.
  */
 @Component
 public class FeedbackAlertClient {
@@ -26,15 +27,12 @@ public class FeedbackAlertClient {
     private static final Logger log = LoggerFactory.getLogger(FeedbackAlertClient.class);
 
     private final String alertFunctionUrl;
-    private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public FeedbackAlertClient(
-            @Value("${alerts.function.url:https://critical-alerts.azurewebsites.net/api/alerts/process}") String alertFunctionUrl,
-            ObjectMapper objectMapper
+            @Value("${alerts.function.url:https://critical-alerts.azurewebsites.net/api/alerts/process}") String alertFunctionUrl
     ) {
         this.alertFunctionUrl = alertFunctionUrl;
-        this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
@@ -55,13 +53,18 @@ public class FeedbackAlertClient {
         try {
             LocalDateTime dataEnvio = evaluation.getCreatedAt() != null ? evaluation.getCreatedAt() : LocalDateTime.now();
 
-            Map<String, Object> payload = Map.of(
-                    "descricao", evaluation.getDescription(),
-                    "nota", evaluation.getScore(),
-                    "data_envio", dataEnvio.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            String jsonBody = String.format(
+                    """
+                    {
+                      "descricao": "%s",
+                      "nota": %d,
+                      "data_envio": "%s"
+                    }
+                    """,
+                    escapeJson(evaluation.getDescription()),
+                    evaluation.getScore(),
+                    dataEnvio.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             );
-
-            String jsonBody = objectMapper.writeValueAsString(payload);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(alertFunctionUrl))
@@ -87,8 +90,15 @@ public class FeedbackAlertClient {
                     });
 
         } catch (Exception ex) {
-            log.error("[ALERTS CLIENT] Erro ao serializar feedback para alerta: {}", ex.getMessage(), ex);
+            log.error("[ALERTS CLIENT] Erro ao preparar dados do feedback ID {}: {}", evaluation.getId(), ex.getMessage());
         }
     }
-}
 
+    private String escapeJson(String raw) {
+        if (raw == null) return "";
+        return raw.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+    }
+}
