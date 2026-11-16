@@ -63,7 +63,7 @@ public class FeedbackAlertClient {
                     """,
                     escapeJson(evaluation.getDescription()),
                     evaluation.getScore(),
-                    dataEnvio.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    dataEnvio.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             );
 
             HttpRequest request = HttpRequest.newBuilder()
