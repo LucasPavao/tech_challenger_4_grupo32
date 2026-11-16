@@ -1,0 +1,250 @@
+{
+  "info": {
+    "_postman_id": "e1395956-ffb9-4bda-b2bc-c8926f5a2b18",
+    "name": "Tech Challenge 4 - Evaluations",
+    "description": "Somente os três endpoints mapeados na EvaluationController.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "26099050"
+  },
+  "item": [
+    {
+      "name": "Feedback",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Liveness",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/actuator/health/liveness",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "actuator",
+                    "health",
+                    "liveness"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Readiness",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/actuator/health/readiness",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "actuator",
+                    "health",
+                    "readiness"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/actuator/health",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "actuator",
+                    "health"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Root",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "POST - Criar avaliação",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"A aplicação apresenta erro ao concluir o pagamento.\",\n  \"nota\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/evaluations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "evaluations"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET - Listar avaliações (com filtro opcional)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "evaluations"
+              ]
+            },
+            "description": "Para filtrar, adicione o parâmetro urgency com um dos valores do enum: CRITICO, REVISAR ou OK. Exemplo: {{baseUrl}}/evaluations?urgency=CRITICO"
+          },
+          "response": []
+        },
+        {
+          "name": "GET - Buscar avaliação por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/{{evaluationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "evaluations",
+                "{{evaluationId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Relatorio",
+      "item": [
+        {
+          "name": "GET",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://function-reports-c9b5h0fbfrg7ekfz.westus3-01.azurewebsites.net/api/relatorio?code=<CODE>&dias=7",
+              "protocol": "https",
+              "host": [
+                "function-reports-c9b5h0fbfrg7ekfz",
+                "westus3-01",
+                "azurewebsites",
+                "net"
+              ],
+              "path": [
+                "api",
+                "relatorio"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "<CODE>"
+                },
+                {
+                  "key": "dias",
+                  "value": "7"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "evaluationId",
+      "value": "1"
+    }
+  ]
+}
