@@ -1,102 +1,193 @@
-# Function Alerts — Serverless Criticality Analysis & Notifications (100% Azure)
+# Function Alerts — Análise de criticidade e alertas por e-mail
 
-Microsserviço Serverless nativo para a nuvem **Microsoft Azure**, responsável pela análise de criticidade e emissão de alertas administrativos para feedbacks de alunos, desenvolvido para o Tech Challenge FIAP (Fase 4 - Grupo 32).
+Azure Function (Java 21) responsável por analisar a criticidade dos feedbacks de alunos e avisar os administradores por e-mail quando o feedback é crítico. Faz parte do Tech Challenge FIAP — Fase 4 — Grupo 32.
 
-Desenvolvido sob os princípios de **Clean Architecture**, **Single Responsibility Principle (SRP)** e fortemente tipado em **Java 21**.
+O código segue **Clean Architecture** e o princípio de **responsabilidade única**: a função só decide se o feedback é crítico e notifica. Salvar e consultar avaliações é papel da API.
 
 ---
 
-## ☁️ Topologia Serverless no Azure (HTTP Trigger Direto)
+## Fluxo
+
+A função é acionada por uma chamada **HTTP direta** da API de avaliações, usando um **HttpTrigger**. Não há fila nem Azure Service Bus.
 
 ```mermaid
 flowchart LR
-    subgraph Ingestion
-        API[Feedback API / course-feedback] -->|HTTP POST assíncrono /api/alerts/process| AF[Azure Function: critical-alerts\nJava 21 Linux]
-    end
-
-    subgraph Serverless Execution
-        AF --> UC[ProcessFeedbackAlertUseCase]
-        UC --> CAS[CriticalityAnalysisService]
-    end
-
-    subgraph Observability and Notification
-        UC -->|Se Crítico| ACS[Azure Communication Services / SendGrid]
-        ACS --> Admin[E-mail Administradores]
-        AF -.-> AppIns[Azure Application Insights]
-    end
+    Aluno([Aluno]) -->|POST /evaluations| API["API de Avaliações<br/>course-feedback"]
+    API -->|1. salva| SQL[("SQL Server")]
+    API -->|2. POST direto<br/>assíncrono| AF["Azure Function<br/>critical-alerts<br/>HttpTrigger"]
+    AF -->|3. se crítico| MAIL[/"E-mail aos administradores<br/>Azure Communication Services"/]
+    AF -.->|logs e métricas| AI[Application Insights]
 ```
 
----
+1. O aluno envia a avaliação para a API (`POST /evaluations`).
+2. A API **salva** a avaliação no banco.
+3. Logo depois, a API faz um `POST` HTTP **assíncrono** para esta função, com a descrição, a nota e a data de envio. O envio não bloqueia a resposta ao aluno. Se a função estiver indisponível, a API apenas registra o erro em log e a avaliação continua salva.
+4. A função analisa o feedback.
+    - **Crítico:** envia o e-mail de alerta aos administradores.
+    - **Revisar** ou **OK:** apenas registra em log, sem e-mail.
 
-## 🏛️ Componentes da Arquitetura Limpa
+### O que isso muda na prática
 
-1. **Domínio (`domain/`)**:
-   - `Feedback`: Entidade imutável (record) com validação de invariantes (descrição não nula, nota entre 0 e 10, timestamp).
-   - `UrgencyLevel`: Enumeração padronizada no ecossistema (`CRITICO`, `REVISAR`, `OK`).
-   - `CriticalityAnalysisService`: Serviço de domínio puro (SRP) contendo as regras de classificação e detecção de palavras-chave sensíveis normalizadas.
-   - `CriticalityResult`: Value Object informando se é crítico, motivo e nível formatado.
-
-2. **Aplicação (`application/`)**:
-   - `FeedbackEventDto`: DTO de entrada mapeando o evento assíncrono do Service Bus.
-   - `NotificationPayload`: Estrutura obrigatória contendo:
-     - **Descrição do feedback**
-     - **Urgência** (ex: `CRÍTICO`)
-     - **Data de envio** formatada
-   - `NotificationSenderPort`: Interface de saída que desacopla a regra de negócio do provedor de e-mail.
-   - `ProcessFeedbackAlertUseCase`: Orquestrador responsável por validar o evento, chamar a análise de criticidade e notificar apenas feedbacks críticos (se for `REVISAR` ou `OK`, encerra com log).
-
-3. **Infraestrutura Azure (`infrastructure/`)**:
-   - `AzureFunctionAlertsHandler`: Ponto de entrada Serverless anotado com `@FunctionName("processFeedbackAlerts")` e `@HttpTrigger(route = "alerts/process")`.
-   - `AzureEmailNotificationAdapter`: Adaptador de saída via API REST do Azure Communication Services / SendGrid com fallback/simulação local.
+- **Não é necessário** criar Azure Service Bus (namespace, fila e custos extras).
+- Basta existir a **Function App** (`critical-alerts`) e a variável com a URL da função na API (`ALERTS_FUNCTION_URL`).
 
 ---
 
-## 📋 Regra de Negócio Implementada
+## Endpoint
 
-Padronizada em conformidade com as Pessoas 2 e 4:
-- **`CRÍTICO`**: `nota <= 3` OU presença de termos de alerta sensíveis (*processo, fraude, péssimo, horrível, denúncia, urgente, abandono, advogado, assédio, racismo, humilhação, preconceito, descaso, inaceitável*) $\rightarrow$ **Dispara Alerta Automático**.
-- **`REVISAR`**: `nota` entre $4$ e $6$ (sem termos sensíveis) $\rightarrow$ Registra log de auditoria pedagógica e **não envia e-mail**.
-- **`OK`**: `nota` entre $7$ e $10$ (sem termos sensíveis) $\rightarrow$ Registra log de auditoria com sucesso e **não envia e-mail**.
+| Item | Valor |
+|---|---|
+| Função | `processFeedbackAlerts` |
+| Rota | `POST /api/alerts/process` |
+| URL | `https://<function-app>.azurewebsites.net/api/alerts/process` |
+| Autenticação | `ANONYMOUS` (veja a seção de segurança) |
 
----
+**Corpo da requisição**
 
-## ⚙️ Variáveis de Ambiente no Azure
+```json
+{
+  "descricao": "Texto do feedback do aluno",
+  "nota": 2,
+  "data_envio": "2026-11-15T18:00:00"
+}
+```
 
-Configuradas nas *Application Settings* do Function App (`critical-alerts`) ou em `local.settings.json`:
+O campo `data_envio` é opcional; se não vier, a função usa o horário atual.
 
-| Variável | Descrição | Exemplo |
-| :--- | :--- | :--- |
-| `ALERT_RECIPIENT_EMAIL` | Destinatário dos alertas administrativos | `coordenacao-feedbacks@instituicao.edu.br` |
-| `ALERT_SENDER_EMAIL` | Remetente configurado no Azure Communication Services | `DoNotReply@<managed-domain>.azurecomm.net` |
-| `COMMUNICATION_SERVICES_CONNECTION_STRING` | Connection String do recurso Azure Communication Services | `endpoint=https://<recurso>.communication.azure.com/;accesskey=...` |
+**Respostas**
 
----
+| Código | Quando |
+|---|---|
+| `200` | Feedback analisado. A resposta é a mesma para feedbacks críticos e não críticos, então o código HTTP não indica se um e-mail foi enviado. |
+| `400` | Corpo da requisição vazio |
+| `500` | Erro ao processar o feedback |
 
-## 🚀 Provisionamento da Infraestrutura na Azure (IaC)
-
-A pasta [`infra/`](./infra) contém os scripts de Infraestrutura como Código (IaC):
-
-1. **Bicep Declarativo**: [`main.bicep`](./infra/main.bicep) cria automaticamente:
-   - Resource Group
-   - Storage Account Serverless
-   - Log Analytics Workspace + Application Insights
-   - Azure Service Bus Namespace + Fila `feedbacks-queue`
-   - Linux Consumption Plan (Y1)
-   - Function App com runtime Java 21 configurada
-
-2. **Deploy com Azure CLI**:
-   ```powershell
-   cd infra
-   az login
-   az deployment group create --resource-group rg-techchallenge-fase4 --template-file ./main.bicep
-   ```
-
----
-
-## 🧪 Execução dos Testes Unitários
+**Exemplo**
 
 ```bash
-mvn clean test
+curl -X POST https://<function-app>.azurewebsites.net/api/alerts/process \
+  -H 'Content-Type: application/json' \
+  -d '{"descricao":"Aula excelente","nota":9}'
 ```
 
-Suite completa cobrindo 100% dos caminhos críticos (notas de 0 a 10, palavras acentuadas, simulação de envio com Mockito e validação dos 3 campos obrigatórios no payload).
+Um feedback crítico (por exemplo, nota 2) envia um e-mail de verdade ao destinatário configurado.
+
+---
+
+## Regra de criticidade
+
+| Urgência | Condição | Ação |
+|---|---|---|
+| **CRÍTICO** | nota **≤ 3**, **ou** a descrição contém um termo de alerta | Envia o e-mail de alerta |
+| **REVISAR** | nota de 4 a 6, sem termos de alerta | Registra em log, sem e-mail |
+| **OK** | nota de 7 a 10, sem termos de alerta | Registra em log, sem e-mail |
+
+**Termos de alerta** (comparados sem acento e como palavra inteira): processo, fraude, péssimo, horrível, denúncia, urgente, abandono, advogado, assédio, racismo, humilhação, preconceito, descaso, inaceitável.
+
+---
+
+## E-mail de alerta
+
+Enviado pelo **Azure Communication Services (Email)** e contém:
+
+- **Descrição** do feedback;
+- **Urgência** (`CRÍTICO`);
+- **Data de envio**.
+
+Sem a variável `COMMUNICATION_SERVICES_CONNECTION_STRING`, a função entra em modo de **simulação**: não envia e-mail e apenas escreve o conteúdo no log.
+
+---
+
+## Arquitetura do código
+
+```
+function-alerts/src/main/java/.../function_alerts
+├── domain/            Regras de negócio puras
+│   ├── model/         Feedback, UrgencyLevel, CriticalityResult
+│   └── service/       CriticalityAnalysisService (regra de criticidade)
+├── application/       Casos de uso
+│   ├── dto/           FeedbackEventDto (entrada), NotificationPayload (e-mail)
+│   ├── port/          NotificationSenderPort (interface de envio)
+│   └── usecase/       ProcessFeedbackAlertUseCase
+└── infrastructure/    Detalhes do Azure
+    ├── serverless/    AzureFunctionAlertsHandler (HttpTrigger)
+    └── adapter/       AzureEmailNotificationAdapter (Azure Communication Services)
+```
+
+- **Domínio:** decide a urgência e não conhece o Azure.
+- **Aplicação:** orquestra a análise e notifica apenas os feedbacks críticos, sem depender do provedor de e-mail.
+- **Infraestrutura:** recebe a requisição HTTP e envia o e-mail. O provedor pode ser trocado sem mexer nas regras.
+
+---
+
+## Configuração (variáveis de ambiente)
+
+Definidas em **Function App `critical-alerts` → Configuração → Variáveis de ambiente**, ou em `local.settings.json` para rodar localmente (use o `local.settings.json.example` como modelo).
+
+| Variável | Descrição | Exemplo |
+|---|---|---|
+| `ALERT_RECIPIENT_EMAIL` | Destinatário dos alertas | `coordenacao@instituicao.edu.br` |
+| `ALERT_SENDER_EMAIL` | Remetente configurado no Azure Communication Services | `DoNotReply@<dominio-gerenciado>.azurecomm.net` |
+| `COMMUNICATION_SERVICES_CONNECTION_STRING` | Cadeia de conexão do Azure Communication Services | `endpoint=https://<recurso>.communication.azure.com/;accesskey=<chave>` |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Liga a função ao Application Insights | gerada pelo recurso |
+| `FUNCTIONS_WORKER_RUNTIME` | Runtime da função | `java` |
+| `AzureWebJobsStorage` | Conta de armazenamento exigida pelo Azure Functions | cadeia de conexão |
+
+Na **API de avaliações**, a variável `ALERTS_FUNCTION_URL` deve apontar para esta função (padrão: `https://critical-alerts.azurewebsites.net/api/alerts/process`).
+
+Não versione chaves nem cadeias de conexão reais.
+
+---
+
+## Deploy automatizado
+
+O workflow [`deploy-function-alerts.yml`](../.github/workflows/deploy-function-alerts.yml) publica a função no Azure.
+
+- **Quando roda:** a cada push na `main` que altere `function-alerts/**`, ou manualmente (`workflow_dispatch`).
+- **Etapas:** build com Maven (Java 21) e testes, login no Azure por identidade gerenciada (OIDC) e publicação na Function App `critical-alerts`.
+
+---
+
+## Monitoramento
+
+Com o **Application Insights** vinculado à função, é possível acompanhar:
+
+- execuções e falhas da função `processFeedbackAlerts`;
+- erros de processamento e do envio de e-mail;
+- chamadas feitas pela API, vistas como dependências no Application Insights da API.
+
+Exemplo de consulta (aba **Logs** do Application Insights da função):
+
+```kusto
+requests
+| where operation_Name has "processFeedbackAlerts"
+| summarize Execucoes=count(),
+            Falhas=countif(success == false or toint(resultCode) >= 400)
+  by bin(timestamp, 5m)
+| render timechart
+```
+
+Mensagens úteis de log: `Requisição HTTP recebida`, `Processamento finalizado com sucesso` e `Erro crítico no processamento`.
+
+---
+
+## Segurança
+
+- A rota está com autenticação `ANONYMOUS`, ou seja, qualquer cliente que conheça a URL pode chamá-la e, em caso de feedback crítico, disparar um e-mail. Para endurecer, mude para `AuthorizationLevel.FUNCTION` e passe a chave na chamada da API.
+- Chaves e cadeias de conexão ficam apenas em variáveis de ambiente do Azure.
+
+---
+
+## Testes
+
+```bash
+./mvnw clean test
+```
+
+Os testes unitários cobrem a regra de criticidade, o caso de uso, o adaptador de e-mail (com simulação) e o handler HTTP.
+
+---
+
+## Infraestrutura como código (`infra/`)
+
+A pasta [`infra`](./infra) contém scripts Bicep e PowerShell de uma versão anterior da solução, que previa **Service Bus** e um plano Consumption. O fluxo atual **não usa Service Bus**. Revise ou remova esses recursos antes de reutilizar os scripts.
