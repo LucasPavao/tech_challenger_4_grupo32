@@ -17,7 +17,6 @@ import java.time.format.DateTimeFormatter;
 /**
  * Cliente HTTP responsável por disparar de forma assíncrona o evento de feedback
  * para a Azure Function Serverless de análise e alertas (critical-alerts).
- *
  * Utiliza exclusivamente a biblioteca padrão do Java 21 (java.net.http),
  * garantindo zero dependências externas e compilação garantida.
  */
@@ -27,12 +26,15 @@ public class FeedbackAlertClient {
     private static final Logger log = LoggerFactory.getLogger(FeedbackAlertClient.class);
 
     private final String alertFunctionUrl;
+    private final String alertFunctionKey;
     private final HttpClient httpClient;
 
     public FeedbackAlertClient(
-            @Value("${alerts.function.url:https://critical-alerts.azurewebsites.net/api/alerts/process}") String alertFunctionUrl
+            @Value("${alerts.function.url:}") String alertFunctionUrl,
+            @Value("${alerts.function.key:}") String alertFunctionKey
     ) {
         this.alertFunctionUrl = alertFunctionUrl;
+        this.alertFunctionKey = alertFunctionKey;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
@@ -66,12 +68,17 @@ public class FeedbackAlertClient {
                     dataEnvio.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             );
 
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(alertFunctionUrl))
                     .timeout(Duration.ofSeconds(10))
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
+
+            if (alertFunctionKey != null && !alertFunctionKey.isBlank()) {
+                requestBuilder.header("x-functions-key", alertFunctionKey);
+            }
+
+            HttpRequest request = requestBuilder.build();
 
             // Despacho assíncrono: não bloqueia a resposta da requisição do aluno
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())

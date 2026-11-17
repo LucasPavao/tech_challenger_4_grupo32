@@ -108,6 +108,7 @@ No Azure, configure em **course-feedback → Configuração → Variáveis de am
 | `DB_USERNAME` | Usuário do banco | `sa` | No Azure, sim |
 | `DB_PASSWORD` | Senha do banco | — | **Sim** |
 | `ALERTS_FUNCTION_URL` | URL da função de alertas | `https://critical-alerts.azurewebsites.net/api/alerts/process` | Não |
+| `ALERTS_FUNCTION_KEY` | Chave de autenticação (Function Key) | — | Em produção, sim |
 | `SERVER_PORT` | Porta da API | `8080` | Não |
 
 Exemplo de `DB_URL` para o Azure SQL:

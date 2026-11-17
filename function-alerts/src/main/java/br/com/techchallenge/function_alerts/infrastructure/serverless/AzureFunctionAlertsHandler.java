@@ -22,7 +22,6 @@ import java.util.logging.Level;
  * Ponto de entrada (Serverless Handler) na nuvem Azure.
  * Acionado via requisição HTTP POST (HttpTrigger) pela API de Feedbacks (course-feedback)
  * após a persistência da avaliação, sem a necessidade de filas ou brokers de mensageria.
- *
  * SRP: Responsável exclusivamente por receber o evento HTTP da nuvem,
  * desserializar a mensagem e invocar o Caso de Uso de negócio.
  */
@@ -65,7 +64,7 @@ public class AzureFunctionAlertsHandler {
             @HttpTrigger(
                     name = "req",
                     methods = {HttpMethod.POST},
-                    authLevel = AuthorizationLevel.ANONYMOUS,
+                    authLevel = AuthorizationLevel.FUNCTION,
                     route = "alerts/process"
             )
             HttpRequestMessage<Optional<String>> request,
